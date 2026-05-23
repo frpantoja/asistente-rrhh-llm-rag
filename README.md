@@ -1,210 +1,158 @@
-# Asistente Inteligente para Consultas Internas de Recursos Humanos usando LLM y RAG
+# Asistente Inteligente de RRHH con LLM y RAG
 
-## Descripción del proyecto
-Este proyecto corresponde al desarrollo de un prototipo académico orientado a responder consultas frecuentes del área de recursos humanos mediante el uso de inteligencia artificial.
+[![CI](https://github.com/frpantoja/asistente-rrhh-llm-rag/actions/workflows/ci.yml/badge.svg)](https://github.com/frpantoja/asistente-rrhh-llm-rag/actions)
 
-La solución fue diseñada para una empresa ficticia llamada **Comercial Andina SpA**, la cual presenta una problemática común en muchas organizaciones: el área de recursos humanos recibe consultas repetitivas sobre vacaciones, permisos administrativos, licencias médicas, beneficios y normativas internas, lo que genera carga operativa y tiempos de respuesta variables.
+## Descripción
 
-Para abordar este problema, se desarrolló un asistente inteligente que combina un modelo de lenguaje (LLM) con un sistema de Recuperación Aumentada de Información (RAG). Esto permite que las respuestas no dependan solo del conocimiento general del modelo, sino también de documentos internos y externos cargados en el sistema.
+Prototipo académico de un asistente inteligente para consultas internas de Recursos Humanos, desarrollado para la empresa ficticia **Comercial Andina SpA**.
 
-## Objetivo del proyecto
-Diseñar un prototipo capaz de responder consultas internas de recursos humanos de forma clara, rápida y contextualizada, utilizando información proveniente de documentos de la empresa y de fuentes externas relacionadas con la normativa laboral.
+El sistema combina un modelo de lenguaje (LLM) con Retrieval-Augmented Generation (RAG) para responder consultas sobre vacaciones, permisos, licencias médicas, beneficios y normativas internas, basándose exclusivamente en documentos corporativos cargados en el sistema.
 
-## ¿Qué hace el sistema?
-El sistema permite que un usuario escriba preguntas en lenguaje natural (por ejemplo, sobre vacaciones, permisos, licencias médicas o beneficios internos). Luego, el programa:
-1. Busca información relevante en los documentos cargados.
-2. Recupera el contexto más útil.
-3. Genera una respuesta apoyada específicamente en esa información.
+## Arquitectura del Sistema
 
-De esta manera, el prototipo busca mejorar el acceso a la información, reducir la dependencia del área de recursos humanos y entregar respuestas más consistentes.
+```
+┌─────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│   Consulta   │────▶│   Retrieval      │────▶│   Generación    │
+│   usuario    │     │   (FAISS + MMR)  │     │   (LLM + Prompt)│
+└─────────────┘     └──────────────────┘     └─────────────────┘
+                           │                         │
+                    ┌──────┴──────┐            ┌─────┴──────┐
+                    │  Filtrado   │            │  Guardrails │
+                    │  por umbral │            │  anti-aluc. │
+                    │  + Re-rank  │            │  + Few-shot │
+                    └─────────────┘            └────────────┘
+```
 
----
+### Pipeline RAG
 
-## Tecnologías utilizadas
-* Python
-* LangChain
-* FAISS
-* GitHub Models
-* Embeddings
-* Archivos de texto (`.txt`) como base documental
-* Visual Studio Code
-* Git y GitHub
+1. **Ingesta**: Los documentos `.txt` se cargan con metadatos automáticos (tipo, título, fuente).
+2. **Chunking**: División con `RecursiveCharacterTextSplitter` (300 chars, overlap 80) con separadores optimizados para español.
+3. **Indexación**: Generación de embeddings (`text-embedding-3-small`) y almacenamiento en FAISS.
+4. **Retrieval**: Búsqueda por similitud con filtrado por umbral (`>0.3`) y selección de top-k.
+5. **Generación**: Prompt estructurado con few-shot examples y guardrails contra alucinaciones.
 
----
+### Componentes Técnicos
 
-## Estructura del proyecto
-* `data/internos/`: Contiene documentos internos simulados del área de recursos humanos.
-* `data/externos/`: Contiene documentos externos de apoyo normativo.
-* `src/`: Contiene los archivos de lógica del sistema.
-* `evidencias/`: Carpeta destinada a capturas y pruebas del prototipo.
-* `app.py`: Archivo principal para ejecutar el asistente.
-* `requirements.txt`: Lista de dependencias del proyecto.
-* `.env`: Archivo de configuración local para credenciales (no se sube al repositorio).
-* `.gitignore`: Archivo que evita subir información sensible o innecesaria.
-* `README.md`: Documentación general del proyecto.
+| Componente | Tecnología | Propósito |
+|---|---|---|
+| Embeddings | `text-embedding-3-small` (Azure) | Representación vectorial de documentos |
+| Vector Store | FAISS | Búsqueda de similitud eficiente |
+| LLM | `gpt-4o-mini` (Azure) | Generación de respuestas |
+| Framework | LangChain | Orquestación del pipeline RAG |
+| CI/CD | GitHub Actions | Tests automáticos y validación |
 
----
+## Estructura del Proyecto
 
-## Documentos utilizados
-El sistema trabaja con documentos internos y externos, los cuales fueron elaborados con fines académicos y simulados de acuerdo con un contexto organizacional realista.
+```
+asistente-rrhh-llm-rag/
+├── app.py                      # Interfaz de consola principal
+├── config/
+│   ├── __init__.py
+│   └── settings.py             # Configuración centralizada
+├── src/
+│   ├── __init__.py
+│   ├── cargar_documentos.py    # Carga de documentos con metadatos
+│   ├── crear_vectores.py       # Pipeline de indexación
+│   ├── prompts.py              # Templates de prompts avanzados
+│   └── rag_pipeline.py         # Pipeline RAG con re-ranking
+├── tests/
+│   ├── __init__.py
+│   ├── test_cargar_documentos.py
+│   ├── test_prompts.py
+│   └── test_rag_pipeline.py
+├── data/
+│   ├── internos/               # Documentos corporativos simulados
+│   └── externos/               # Normativa laboral de referencia
+├── evidencias/                 # Capturas de pruebas
+├── .github/
+│   └── workflows/
+│       └── ci.yml              # Pipeline de CI con GitHub Actions
+├── .env.example                # Plantilla de variables de entorno
+├── .gitignore
+├── requirements.txt
+└── README.md
+```
 
-**Documentos internos:**
-* Reglamento interno
-* Política de vacaciones
-* Instructivo de permisos administrativos
-* Manual de beneficios
-* Procedimiento de licencias médicas
+## Requisitos Previos
 
-**Documentos externos:**
-* Resumen académico del Código del Trabajo
-* Información de apoyo de la Dirección del Trabajo
-* Referencia general de normativa laboral
+- Python 3.10 o superior
+- Git
+- Token personal de GitHub con permisos de lectura de modelos
 
----
-
-## Requisitos previos
-* **Python** instalado en el equipo.
-* **Visual Studio Code** (o un editor de código similar).
-* **Git** instalado.
-* Un **token personal de GitHub** con permisos habilitados para el uso de modelos.
-
----
-
-## Instalación del proyecto
-
-1. **Clonar el repositorio:** Clona o descarga este repositorio en tu equipo.  
-2. **Abrir el editor:** Abre la carpeta del proyecto en Visual Studio Code.  
-3. **Crear un entorno virtual:** Abre la terminal integrada y ejecuta el siguiente comando:
+## Instalación
 
 ```bash
+# 1. Clonar el repositorio
+git clone https://github.com/frpantoja/asistente-rrhh-llm-rag.git
+cd asistente-rrhh-llm-rag
+
+# 2. Crear y activar entorno virtual
 python -m venv venv
-```
+source venv/bin/activate          # Linux/macOS
+# venv\Scripts\activate           # Windows
 
-### 4. Activar el entorno virtual
-
-En Windows:
-
-```bash
-venv\Scripts\activate
-```
-
-En macOS o Linux:
-
-```bash
-source venv/bin/activate
-```
-
-### 5. Instalar dependencias
-
-Con el entorno virtual activado, ejecuta:
-
-```bash
+# 3. Instalar dependencias
 pip install -r requirements.txt
+
+# 4. Configurar variables de entorno
+cp .env.example .env
+# Editar .env con tu GITHUB_TOKEN personal
 ```
 
-## Configuración del archivo `.env`
+## Configuración del Token
 
-Para que el sistema funcione, es necesario crear un archivo llamado `.env` en la raíz del proyecto. Este archivo no debe subirse al repositorio, ya que contiene información sensible.
+Crea un token en [GitHub Settings > Developer Settings > Personal Access Tokens](https://github.com/settings/tokens) con permiso de lectura para modelos (`models:read`).
 
-Dentro del archivo `.env`, debe escribirse lo siguiente:
-
+Agrega el token en el archivo `.env`:
 ```env
-GITHUB_TOKEN=TU_TOKEN_AQUI
-OPENAI_BASE_URL=https://models.inference.ai.azure.com
+GITHUB_TOKEN=ghp_tu_token_aqui
 ```
 
-### Importante sobre el token
+## Uso
 
-La persona que ejecute el proyecto debe usar su propio token personal de GitHub.
-
-Ese token debe tener permiso para modelos. En GitHub puede aparecer como:
-
-- `Models`
-- `Models: Read`
-- `models`
-- `models:read`
-
-Esto puede variar según el idioma de la cuenta o el tipo de token creado, pero la idea es que tenga permiso de lectura para usar modelos.
-
-No se debe reutilizar ni publicar el token de otra persona. Cada usuario debe crear y configurar el suyo de forma local.
-
----
-
-## ¿Cómo funciona el sistema?
-
-El funcionamiento general del prototipo es el siguiente:
-
-1. El usuario realiza una consulta en lenguaje natural.
-2. El sistema busca fragmentos relevantes dentro de los documentos previamente cargados.
-3. Se recupera el contexto más útil para responder a la consulta.
-4. El modelo de lenguaje genera una respuesta basada exclusivamente en ese contexto.
-5. La respuesta se entrega al usuario en la pantalla de la consola.
-
----
-
-## Ejecución del proyecto
-
-### 1. Creación de la base vectorial
-
-Antes de ejecutar el asistente por primera vez, o si se modifican los documentos base, es necesario crear la base vectorial. Ejecuta el siguiente comando en la terminal:
+### 1. Crear la base vectorial
 
 ```bash
-python src\crear_vectores.py
+python -m src.crear_vectores
 ```
 
-Si todo está correcto, el sistema mostrará mensajes indicando que los documentos fueron cargados y que la base vectorial fue creada exitosamente.
-
-### 2. Ejecución del asistente
-
-Una vez creada la base vectorial, puedes iniciar el asistente interactivo con este comando:
+### 2. Ejecutar el asistente
 
 ```bash
 python app.py
 ```
 
-Al iniciar, el programa solicitará que el usuario ingrese una consulta.
-
----
-
-## Ejemplos de uso
-
-Puedes probar el asistente con preguntas como las siguientes:
+### Ejemplos de consultas
 
 - ¿Cuántos días de vacaciones me corresponden?
-- ¿Cómo se solicita un permiso administrativo?
+- ¿Cómo solicito un permiso administrativo?
 - ¿Qué debo hacer si tengo una licencia médica?
-- ¿Qué beneficios internos entrega la empresa?
-- ¿Dónde puedo hacer consultas sobre vacaciones o permisos?
+- ¿Qué beneficios internos ofrece la empresa?
 
----
+### 3. Ejecutar tests
 
-## Archivos principales del sistema
+```bash
+python -m pytest tests/ -v
+```
 
-### `src/cargar_documentos.py`
+## Decisiones Técnicas
 
-Permite leer los documentos de texto desde las carpetas internas y externas.
+### ¿Por qué chunks de 300 caracteres?
 
-### `src/crear_vectores.py`
+Los documentos de RRHH son cortos y altamente estructurados (promedio ~650 chars). Chunks de 500 (versión anterior) podían contener múltiples secciones mezcladas, diluyendo la relevancia. Chunks de 300 con overlap de 80 permiten capturar secciones individuales con contexto suficiente.
 
-Carga los documentos, los divide en fragmentos, genera embeddings y crea la base vectorial.
+### ¿Por qué umbral de similitud?
 
-### `src/rag_pipeline.py`
+Sin umbral, el sistema siempre retorna k documentos aunque ninguno sea relevante, lo que causa alucinaciones. El umbral de 0.3 filtra chunks irrelevantes y permite al sistema responder honestamente cuando no tiene información.
 
-Contiene la lógica principal del sistema RAG. Recupera contexto y genera respuestas con el modelo.
+### ¿Por qué few-shot en el prompt?
 
-### `app.py`
+Los ejemplos en el prompt le muestran al modelo el formato esperado de respuesta y, especialmente, cómo responder cuando no tiene información suficiente. Esto reduce alucinaciones comparado con el prompt genérico original.
 
-Permite ejecutar el asistente desde consola y realizar preguntas.
+## Uso Ético de IA
 
-
----
-
-## Uso ético de inteligencia artificial
-
-Este proyecto fue desarrollado con apoyo de inteligencia artificial para mejorar redacción, organización de ideas y orientación técnica general. El análisis del caso, la definición de requerimientos, el diseño de la solución, la arquitectura y la validación del contenido fueron realizados y revisados por el equipo.
-
----
+Este proyecto fue desarrollado con apoyo de inteligencia artificial para mejorar redacción, organización y orientación técnica. El análisis del caso, diseño de la solución, arquitectura y validación fueron realizados por el equipo.
 
 ## Autoría
 
-Proyecto académico desarrollado para la asignatura **Ingeniería de Soluciones con Inteligencia Artificial**.
+Proyecto académico para la asignatura **Ingeniería de Soluciones con Inteligencia Artificial**.

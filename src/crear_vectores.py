@@ -1,54 +1,115 @@
-from langchain_community.document_loaders import TextLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+"""
+Módulo de creación de base vectorial con chunking avanzado.
+
+Mejoras respecto a la versión original:
+- Chunk size reducido (300) con mayor overlap (80) para mejor granularidad.
+- Los metadatos del documento se propagan a cada chunk.
+- Logging detallado del proceso de indexación.
+- Separadores personalizados para documentos en español.
+"""
+
+import logging
+
 from langchain_openai import OpenAIEmbeddings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
-from pathlib import Path
-import os
-from dotenv import load_dotenv
+
+from config.settings import (
+    GITHUB_TOKEN,
+    OPENAI_BASE_URL,
+    EMBEDDING_MODEL,
+    CHUNK_SIZE,
+    CHUNK_OVERLAP,
+    FAISS_INDEX_DIR,
+)
+from src.cargar_documentos import cargar_documentos
+
+logger = logging.getLogger(__name__)
 
 
-load_dotenv()
+def crear_splitter() -> RecursiveCharacterTextSplitter:
+    """
+    Crea un text splitter optimizado para documentos en español de RRHH.
 
+    Usa separadores jerárquicos que respetan la estructura de los documentos:
+    secciones numeradas, párrafos y oraciones.
+    """
+    separadores = [
+        "\n\n",       # Separar por secciones/párrafos dobles
+        "\n",          # Separar por líneas
+        ". ",          # Separar por oraciones
+        ", ",          # Separar por cláusulas
+        " ",           # Separar por palabras (último recurso)
+    ]
 
-def cargar_documentos_txt(ruta_base: str):
-    documentos = []
-    ruta = Path(ruta_base)
-
-    for archivo in ruta.rglob("*.txt"):
-        loader = TextLoader(str(archivo), encoding="utf-8")
-        documentos.extend(loader.load())
-
-    return documentos
-
-
-def crear_base_vectorial():
-    github_token = os.getenv("GITHUB_TOKEN")
-
-    if not github_token:
-        raise ValueError("No se encontró GITHUB_TOKEN en el archivo .env")
-
-    documentos = cargar_documentos_txt("data")
-
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
-        chunk_overlap=50
+    return RecursiveCharacterTextSplitter(
+        chunk_size=CHUNK_SIZE,
+        chunk_overlap=CHUNK_OVERLAP,
+        separators=separadores,
+        length_function=len,
+        is_separator_regex=False,
     )
 
+
+def crear_embeddings() -> OpenAIEmbeddings:
+    """Crea instancia de embeddings con la configuración centralizada."""
+    if not GITHUB_TOKEN:
+        raise ValueError(
+            "No se encontró GITHUB_TOKEN en el archivo .env. "
+            "Consulta el README para instrucciones de configuración."
+        )
+
+    return OpenAIEmbeddings(
+        model=EMBEDDING_MODEL,
+        api_key=GITHUB_TOKEN,
+        base_url=OPENAI_BASE_URL,
+    )
+
+
+def crear_base_vectorial() -> None:
+    """
+    Pipeline completo de indexación:
+    1. Carga documentos con metadatos.
+    2. Divide en chunks preservando metadatos.
+    3. Genera embeddings y crea índice FAISS.
+    4. Guarda el índice en disco.
+    """
+    logger.info("=== Iniciando creación de base vectorial ===")
+
+    # 1. Cargar documentos
+    documentos = cargar_documentos()
+    if not documentos:
+        logger.error("No se encontraron documentos. Abortando.")
+        return
+
+    # 2. Dividir en chunks
+    splitter = crear_splitter()
     chunks = splitter.split_documents(documentos)
 
-    embeddings = OpenAIEmbeddings(
-        model="text-embedding-3-small",
-        api_key=github_token,
-        base_url="https://models.inference.ai.azure.com"
+    logger.info(
+        "Chunking completado: %d documentos → %d chunks (size=%d, overlap=%d)",
+        len(documentos),
+        len(chunks),
+        CHUNK_SIZE,
+        CHUNK_OVERLAP,
     )
 
-    vectorstore = FAISS.from_documents(chunks, embeddings)
-    vectorstore.save_local("faiss_index")
+    # Log de distribución de chunks por documento
+    from collections import Counter
+    distribucion = Counter(c.metadata.get("nombre_archivo", "?") for c in chunks)
+    for nombre, cantidad in distribucion.most_common():
+        logger.info("  %s: %d chunks", nombre, cantidad)
 
-    print("Base vectorial creada correctamente.")
-    print(f"Cantidad de documentos cargados: {len(documentos)}")
-    print(f"Cantidad de fragmentos generados: {len(chunks)}")
+    # 3. Crear embeddings e indexar
+    embeddings = crear_embeddings()
+    vectorstore = FAISS.from_documents(chunks, embeddings)
+
+    # 4. Guardar
+    vectorstore.save_local(FAISS_INDEX_DIR)
+    logger.info("Base vectorial guardada en '%s'", FAISS_INDEX_DIR)
+    logger.info("=== Indexación completada exitosamente ===")
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
     crear_base_vectorial()

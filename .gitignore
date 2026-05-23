@@ -1,0 +1,30 @@
+# Entorno virtual
+venv/
+.venv/
+env/
+
+# Variables de entorno
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# FAISS index (se genera con crear_vectores.py)
+faiss_index/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
