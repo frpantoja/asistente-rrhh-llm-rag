@@ -31,6 +31,10 @@ SIMILARITY_THRESHOLD = 0.3      # Umbral mínimo de similitud (0 a 1)
 DATA_DIR = "data"
 FAISS_INDEX_DIR = "faiss_index"
 
+# --- Memoria ---
+MEMORY_TYPE = os.getenv("MEMORY_TYPE", "summary")  # buffer, window o summary
+MEMORY_WINDOW_SIZE = 5
+
 # --- Logging ---
 LOG_LEVEL = os.getenv("LOG_LEVEL", "WARNING")
 LOG_FORMAT = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"

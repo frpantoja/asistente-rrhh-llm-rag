@@ -33,11 +33,13 @@ from config.settings import (
     OPENAI_BASE_URL,
     LLM_MODEL,
     LLM_TEMPERATURE,
+    MEMORY_TYPE,
+    MEMORY_WINDOW_SIZE,
 )
 from src.tools.consulta_tool import consultar_documentos
 from src.tools.escritura_tool import generar_resumen
 from src.tools.razonamiento_tool import analizar_situacion_laboral
-from src.memoria import MemoriaConversacional, crear_memoria_corto_plazo
+from src.memoria import crear_memoria
 
 logger = logging.getLogger(__name__)
 
@@ -132,8 +134,13 @@ class AgenteRRHH:
             analizar_situacion_laboral,
         ]
 
-        # Crear memoria de corto plazo
-        self._memoria = crear_memoria_corto_plazo()
+        # Crear memoria segun configuracion
+        if MEMORY_TYPE == "summary":
+            self._memoria = crear_memoria("summary", llm=self._llm)
+        elif MEMORY_TYPE == "buffer":
+            self._memoria = crear_memoria("buffer")
+        else:
+            self._memoria = crear_memoria("window", window_size=MEMORY_WINDOW_SIZE)
 
         # Construir agente ReAct con LangGraph
         self._agent = create_react_agent(
