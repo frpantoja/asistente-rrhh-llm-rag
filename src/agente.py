@@ -2,10 +2,10 @@
 Agente funcional de RRHH con herramientas, memoria y planificación.
 
 Este módulo implementa el agente central del sistema, que integra:
-- Herramientas de consulta, escritura y razonamiento (IE1, IE2)
-- Memoria de corto plazo conversacional (IE3)
-- Recuperación de contexto semántico via RAG (IE4)
-- Planificación y toma de decisiones adaptativa (IE5, IE6)
+- Herramientas de consulta, escritura y razonamiento
+- Memoria conversacional con tres estrategias (buffer, window, summary)
+- Recuperación de contexto semántico via RAG
+- Planificación y toma de decisiones adaptativa
 
 El agente usa LangGraph con el patrón ReAct (Reasoning + Acting),
 que permite al agente razonar paso a paso sobre qué herramienta usar

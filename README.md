@@ -116,10 +116,16 @@ Analiza situaciones laborales complejas que requieren cruzar información de mú
 ## Sistema de Memoria
 
 ### Memoria de Corto Plazo
-- **Tecnología**: `ConversationBufferWindowMemory` de LangChain.
-- **Ventana**: Últimas 5 interacciones (pregunta + respuesta).
-- **Propósito**: Mantener contexto conversacional para preguntas de seguimiento.
-- **Ejemplo**: Si el trabajador pregunta sobre vacaciones y luego dice "¿y cómo las solicito?", el agente entiende que se refiere a vacaciones.
+
+El sistema implementa tres estrategias de memoria de corto plazo, seleccionables por configuracion (`MEMORY_TYPE` en `.env`):
+
+| Estrategia | Clase | Comportamiento | Caso de uso |
+|---|---|---|---|
+| **Buffer** | `MemoriaBuffer` | Guarda todo el historial sin limite | Conversaciones cortas donde se necesita todo el contexto |
+| **Window** | `MemoriaWindow` | Ventana deslizante de las ultimas K interacciones | Conversaciones moderadas, balancea contexto y tokens |
+| **Summary** | `MemoriaSummary` | Resume la conversacion usando el LLM cada 2 turnos | Conversaciones largas donde importa el contexto general |
+
+Por defecto se usa **Summary Memory**, que genera un resumen progresivo de la conversacion mediante el LLM. Esto permite mantener el contexto general sin exceder el limite de tokens del modelo, incluso en conversaciones prolongadas.
 
 ### Memoria de Largo Plazo
 - **Tecnología**: FAISS + embeddings (`text-embedding-3-small`).
@@ -233,8 +239,8 @@ El patrón ReAct permite al agente razonar explícitamente antes de actuar. A di
 ### ¿Por qué separar en 3 herramientas?
 Cada herramienta tiene un propósito claro y distinto. La separación permite al agente combinarlas según necesite y facilita agregar nuevas herramientas en el futuro sin modificar el agente.
 
-### ¿Por qué ConversationBufferWindowMemory?
-Una ventana de 5 interacciones balancea contexto y eficiencia. Memoria completa (sin ventana) puede exceder el límite de tokens del modelo en conversaciones largas. Memoria de resumen perdería detalles importantes para preguntas de seguimiento.
+### ¿Por qué tres estrategias de memoria?
+Cada estrategia tiene ventajas y limitaciones distintas. Buffer es simple pero costosa en tokens. Window balancea contexto reciente con eficiencia. Summary consume tokens constantes sin importar la longitud de la conversacion, pero pierde detalles especificos. Implementar las tres permite elegir la mas adecuada segun el escenario y demuestra comprension de los trade-offs involucrados.
 
 ### ¿Por qué chunks de 300 caracteres?
 Los documentos de RRHH son cortos (~650 chars promedio). Chunks de 300 con overlap de 80 capturan secciones individuales con contexto suficiente, mejorando la precisión del retrieval respecto a chunks más grandes.
